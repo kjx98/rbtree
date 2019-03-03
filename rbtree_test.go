@@ -1,20 +1,22 @@
 //
-// Created by Yaz Saito on 06/10/12.
+// Created by Jesse Kuang
 //
 
 package rbtree
 
-import "testing"
-import "math/rand"
-import "fmt"
-import "log"
-import "sort"
+import (
+	"fmt"
+	"log"
+	"math/rand"
+	"sort"
+	"testing"
+)
 
 const testVerbose = false
 
 // Create a tree storing a set of integers
 func testNewIntSet() *Tree {
-	return NewTree(func(i1, i2 interface{}) int {
+	return New(func(i1, i2 interface{}) int {
 		return int(i1.(int)) - int(i2.(int))
 	})
 }
@@ -32,7 +34,7 @@ func TestEmpty(t *testing.T) {
 	testAssert(t, tree.Min().Limit(), "limit")
 	testAssert(t, tree.FindGE(10).Limit(), "Not empty")
 	testAssert(t, tree.FindLE(10).NegativeLimit(), "Not empty")
-	testAssert(t, tree.Get(10) == nil, "Not empty")
+	testAssert(t, tree.Find(10) == nil, "Not empty")
 	testAssert(t, tree.Limit().Equal(tree.Min()), "iter")
 }
 
@@ -54,12 +56,12 @@ func TestFindLE(t *testing.T) {
 	testAssert(t, tree.FindLE(9).NegativeLimit(), "FindLE 9")
 }
 
-func TestGet(t *testing.T) {
+func TestFind(t *testing.T) {
 	tree := testNewIntSet()
 	testAssert(t, tree.Insert(10), "insert1")
-	testAssert(t, tree.Get(10).(int) == 10, "Get 10")
-	testAssert(t, tree.Get(9) == nil, "Get 9")
-	testAssert(t, tree.Get(11) == nil, "Get 11")
+	testAssert(t, tree.Find(10).(int) == 10, "Find 10")
+	testAssert(t, tree.Find(9) == nil, "Find 9")
+	testAssert(t, tree.Find(11) == nil, "Find 11")
 }
 
 func TestDelete(t *testing.T) {
@@ -78,7 +80,7 @@ func TestDelete(t *testing.T) {
 
 }
 
-func iterToString(i Iterator) string {
+func iterToString(i *Iterator) string {
 	s := ""
 	for ; !i.Limit(); i = i.Next() {
 		if s != "" {
@@ -89,7 +91,7 @@ func iterToString(i Iterator) string {
 	return s
 }
 
-func reverseIterToString(i Iterator) string {
+func reverseIterToString(i *Iterator) string {
 	s := ""
 	for ; !i.NegativeLimit(); i = i.Prev() {
 		if s != "" {
@@ -252,7 +254,7 @@ func (oiter oracleIterator) Prev() oracleIterator {
 	return oracleIterator{oiter.o, oiter.index - 1}
 }
 
-func compareContents(t *testing.T, oiter oracleIterator, titer Iterator) {
+func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator) {
 	oi := oiter
 	ti := titer
 
@@ -358,12 +360,12 @@ func ExampleIntString() {
 		value string
 	}
 
-	tree := NewTree(func(a, b interface{}) int { return a.(MyItem).key - b.(MyItem).key })
+	tree := New(func(a, b interface{}) int { return a.(MyItem).key - b.(MyItem).key })
 	tree.Insert(MyItem{10, "value10"})
 	tree.Insert(MyItem{12, "value12"})
 
-	fmt.Println("Get(10) ->", tree.Get(MyItem{10, ""}))
-	fmt.Println("Get(11) ->", tree.Get(MyItem{11, ""}))
+	fmt.Println("Find(10) ->", tree.Find(MyItem{10, ""}))
+	fmt.Println("Find(11) ->", tree.Find(MyItem{11, ""}))
 
 	// Find an element >= 11
 	iter := tree.FindGE(MyItem{11, ""})
@@ -376,14 +378,14 @@ func ExampleIntString() {
 	}
 
 	// Output:
-	// Get(10) -> {10 value10}
-	// Get(11) -> <nil>
+	// Find(10) -> {10 value10}
+	// Find(11) -> <nil>
 	// FindGE(11) -> {12 value12}
 }
 
 func BenchmarkRBInsert(b *testing.B) {
 	b.StopTimer()
-	tree := NewTree(func(a, b interface{}) int {
+	tree := New(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
 	for i := 0; i < 1e6; i++ {
@@ -398,7 +400,7 @@ func BenchmarkRBInsert(b *testing.B) {
 
 func BenchmarkFind(b *testing.B) {
 	b.StopTimer()
-	tree := NewTree(func(a, b interface{}) int {
+	tree := New(func(a, b interface{}) int {
 		return a.(int) - b.(int)
 	})
 	for i := 0; i < 1e6; i++ {
@@ -407,6 +409,6 @@ func BenchmarkFind(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		v := (rand.Int() % 1e6)
-		tree.Get(v)
+		tree.Find(v)
 	}
 }

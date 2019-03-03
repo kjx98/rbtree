@@ -1,5 +1,5 @@
 //
-// Created by Yaz Saito on 06/10/12.
+// Created by Jesse Kuang
 //
 
 // A red-black tree with an API similar to C++ STL's.
@@ -36,7 +36,7 @@ type Tree struct {
 }
 
 // Create a new empty tree.
-func NewTree(compare CompareFunc) *Tree {
+func New(compare CompareFunc) *Tree {
 	return &Tree{compare: compare}
 }
 
@@ -47,7 +47,7 @@ func (root *Tree) Len() int {
 
 // A convenience function for finding an element equal to key. Return
 // nil if not found.
-func (root *Tree) Get(key interface{}) interface{} {
+func (root *Tree) Find(key interface{}) interface{} {
 	n, exact := root.findGE(key)
 	if exact {
 		return n.item
@@ -57,55 +57,55 @@ func (root *Tree) Get(key interface{}) interface{} {
 
 // Create an iterator that points to the minimum item in the tree
 // If the tree is empty, return Limit()
-func (root *Tree) Min() Iterator {
-	return Iterator{root, root.minNode}
+func (root *Tree) Min() *Iterator {
+	return &Iterator{root, root.minNode}
 }
 
 // Create an iterator that points at the maximum item in the tree
 //
 // If the tree is empty, return NegativeLimit()
-func (root *Tree) Max() Iterator {
+func (root *Tree) Max() *Iterator {
 	if root.maxNode == nil {
 		// TODO: there are a few checks of this form.
 		// Perhaps set maxNode=negativeLimit when the tree is empty
-		return Iterator{root, negativeLimitNode}
+		return &Iterator{root, negativeLimitNode}
 	}
-	return Iterator{root, root.maxNode}
+	return &Iterator{root, root.maxNode}
 }
 
 // Create an iterator that points beyond the maximum item in the tree
-func (root *Tree) Limit() Iterator {
-	return Iterator{root, nil}
+func (root *Tree) Limit() *Iterator {
+	return &Iterator{root, nil}
 }
 
 // Create an iterator that points before the minimum item in the tree
-func (root *Tree) NegativeLimit() Iterator {
-	return Iterator{root, negativeLimitNode}
+func (root *Tree) NegativeLimit() *Iterator {
+	return &Iterator{root, negativeLimitNode}
 }
 
 // Find the smallest element N such that N >= key, and return the
 // iterator pointing to the element. If no such element is found,
 // return root.Limit().
-func (root *Tree) FindGE(key interface{}) Iterator {
+func (root *Tree) FindGE(key interface{}) *Iterator {
 	n, _ := root.findGE(key)
-	return Iterator{root, n}
+	return &Iterator{root, n}
 }
 
 // Find the largest element N such that N <= key, and return the
 // iterator pointing to the element. If no such element is found,
 // return iter.NegativeLimit().
-func (root *Tree) FindLE(key interface{}) Iterator {
+func (root *Tree) FindLE(key interface{}) *Iterator {
 	n, exact := root.findGE(key)
 	if exact {
-		return Iterator{root, n}
+		return &Iterator{root, n}
 	}
 	if n != nil {
-		return Iterator{root, n.doPrev()}
+		return &Iterator{root, n.doPrev()}
 	}
 	if root.maxNode == nil {
-		return Iterator{root, negativeLimitNode}
+		return &Iterator{root, negativeLimitNode}
 	}
-	return Iterator{root, root.maxNode}
+	return &Iterator{root, root.maxNode}
 }
 
 func getGU(n *node) (grandparent, uncle *node) {
@@ -204,7 +204,7 @@ func (root *Tree) DeleteWithKey(key interface{}) bool {
 // Delete the current item.
 //
 // REQUIRES: !iter.Limit() && !iter.NegativeLimit()
-func (root *Tree) DeleteWithIterator(iter Iterator) {
+func (root *Tree) DeleteWithIterator(iter *Iterator) {
 	if iter.root != root {
 		panic("DeleteWithIterator called with iterator not from this tree.")
 	}
@@ -224,65 +224,65 @@ type Iterator struct {
 }
 
 // allow clients to verify iterator is from the right tree.
-func (iter Iterator) Tree() *Tree {
+func (iter *Iterator) Tree() *Tree {
 	return iter.root
 }
 
-func (iter Iterator) Equal(iter2 Iterator) bool {
+func (iter *Iterator) Equal(iter2 *Iterator) bool {
 	return iter.node == iter2.node
 }
 
 // Check if the iterator points beyond the max element in the tree
-func (iter Iterator) Limit() bool {
+func (iter *Iterator) Limit() bool {
 	return iter.node == nil
 }
 
 // Check if the iterator points to the minimum element in the tree
-func (iter Iterator) Min() bool {
+func (iter *Iterator) Min() bool {
 	return iter.node == iter.root.minNode
 }
 
 // Check if the iterator points to the maximum element in the tree
-func (iter Iterator) Max() bool {
+func (iter *Iterator) Max() bool {
 	return iter.node == iter.root.maxNode
 }
 
 // Check if the iterator points before the minumum element in the tree
-func (iter Iterator) NegativeLimit() bool {
+func (iter *Iterator) NegativeLimit() bool {
 	return iter.node == negativeLimitNode
 }
 
 // Return the current element.
 //
 // REQUIRES: !iter.Limit() && !iter.NegativeLimit()
-func (iter Iterator) Item() interface{} {
+func (iter *Iterator) Item() interface{} {
 	return iter.node.item
 }
 
 // Create a new iterator that points to the successor of the current element.
 //
 // REQUIRES: !iter.Limit()
-func (iter Iterator) Next() Iterator {
+func (iter *Iterator) Next() *Iterator {
 	doAssert(!iter.Limit())
 	if iter.NegativeLimit() {
-		return Iterator{iter.root, iter.root.minNode}
+		return &Iterator{iter.root, iter.root.minNode}
 	}
-	return Iterator{iter.root, iter.node.doNext()}
+	return &Iterator{iter.root, iter.node.doNext()}
 }
 
 // Create a new iterator that points to the predecessor of the current
 // node.
 //
 // REQUIRES: !iter.NegativeLimit()
-func (iter Iterator) Prev() Iterator {
+func (iter *Iterator) Prev() *Iterator {
 	doAssert(!iter.NegativeLimit())
 	if !iter.Limit() {
-		return Iterator{iter.root, iter.node.doPrev()}
+		return &Iterator{iter.root, iter.node.doPrev()}
 	}
 	if iter.root.maxNode == nil {
-		return Iterator{iter.root, negativeLimitNode}
+		return &Iterator{iter.root, negativeLimitNode}
 	}
-	return Iterator{iter.root, iter.root.maxNode}
+	return &Iterator{iter.root, iter.root.maxNode}
 }
 
 func doAssert(b bool) {
@@ -291,8 +291,10 @@ func doAssert(b bool) {
 	}
 }
 
-const red = iota
-const black = 1 + iota
+const (
+	red = iota
+	black
+)
 
 type node struct {
 	myTree              *Tree
@@ -750,7 +752,7 @@ func (root *Tree) DumpAsString() string {
 	s := ""
 	i := 0
 	verb = true
-	for it := root.Min(); it != root.Limit(); it = it.Next() {
+	for it := root.Min(); !it.Limit(); it = it.Next() {
 		s += fmt.Sprintf("node %03d: %#v\n", i, it.Item())
 		i++
 	}
@@ -760,7 +762,7 @@ func (root *Tree) DumpAsString() string {
 func (root *Tree) Dump() {
 	i := 0
 	verb = true
-	for it := root.Min(); it != root.Limit(); it = it.Next() {
+	for it := root.Min(); !it.Limit(); it = it.Next() {
 		fmt.Printf("node %03d: %#v\n", i, it.Item())
 		i++
 	}
