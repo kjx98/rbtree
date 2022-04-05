@@ -25,10 +25,10 @@ type CompareFunc func(a, b interface{}) int
 
 type Tree struct {
 	// Root of the tree
-	root *node
+	root *Node
 
 	// The minimum and maximum nodes under the root.
-	minNode, maxNode *node
+	minNode, maxNode *Node
 
 	// Number of nodes under root, including the root
 	count   int
@@ -108,7 +108,7 @@ func (root *Tree) FindLE(key interface{}) *Iterator {
 	return &Iterator{root, root.maxNode}
 }
 
-func getGU(n *node) (grandparent, uncle *node) {
+func getGU(n *Node) (grandparent, uncle *Node) {
 	grandparent = n.parent.parent
 	if n.parent.isLeftChild() {
 		uncle = grandparent.right
@@ -129,7 +129,7 @@ func (root *Tree) Insert(item interface{}) bool {
 	}
 
 	n.color = red
-	var uncle, grandparent *node
+	var uncle, grandparent *Node
 	for {
 
 		// Case 1: N is at the root
@@ -220,7 +220,7 @@ func (root *Tree) DeleteWithIterator(iter *Iterator) {
 // remains valid.
 type Iterator struct {
 	root *Tree
-	node *node
+	node *Node
 }
 
 // allow clients to verify iterator is from the right tree.
@@ -296,34 +296,34 @@ const (
 	black
 )
 
-type node struct {
+type Node struct {
 	myTree              *Tree
 	item                interface{}
-	parent, left, right *node
+	parent, left, right *Node
 	color               int // black or red
 }
 
-var negativeLimitNode *node
+var negativeLimitNode *Node
 
 //
 // Internal node attribute accessors
 //
-func getColor(n *node) int {
+func getColor(n *Node) int {
 	if n == nil {
 		return black
 	}
 	return n.color
 }
 
-func (n *node) isLeftChild() bool {
+func (n *Node) isLeftChild() bool {
 	return n == n.parent.left
 }
 
-func (n *node) isRightChild() bool {
+func (n *Node) isRightChild() bool {
 	return n == n.parent.right
 }
 
-func (n *node) sibling() *node {
+func (n *Node) sibling() *Node {
 	doAssert(n.parent != nil)
 	if n.isLeftChild() {
 		return n.parent.right
@@ -333,7 +333,7 @@ func (n *node) sibling() *node {
 
 // Return the minimum node that's larger than N. Return nil if no such
 // node is found.
-func (n *node) doNext() *node {
+func (n *Node) doNext() *Node {
 	if n.right != nil {
 		m := n.right
 		for m.left != nil {
@@ -357,7 +357,7 @@ func (n *node) doNext() *node {
 
 // Return the maximum node that's smaller than N. Return nil if no
 // such node is found.
-func (n *node) doPrev() *node {
+func (n *Node) doPrev() *Node {
 	if n.left != nil {
 		return maxPredecessor(n)
 	}
@@ -376,7 +376,7 @@ func (n *node) doPrev() *node {
 }
 
 // Return the predecessor of "n".
-func maxPredecessor(n *node) *node {
+func maxPredecessor(n *Node) *Node {
 	doAssert(n.left != nil)
 	m := n.left
 	for m.right != nil {
@@ -411,7 +411,7 @@ func (root *Tree) recomputeMaxNode() {
 	}
 }
 
-func (root *Tree) maybeSetMinNode(n *node) {
+func (root *Tree) maybeSetMinNode(n *Node) {
 	if root.minNode == nil {
 		root.minNode = n
 		root.maxNode = n
@@ -420,7 +420,7 @@ func (root *Tree) maybeSetMinNode(n *node) {
 	}
 }
 
-func (root *Tree) maybeSetMaxNode(n *node) {
+func (root *Tree) maybeSetMaxNode(n *Node) {
 	if root.maxNode == nil {
 		root.minNode = n
 		root.maxNode = n
@@ -431,9 +431,9 @@ func (root *Tree) maybeSetMaxNode(n *node) {
 
 // Try inserting "item" into the tree. Return nil if the item is
 // already in the tree. Otherwise return a new (leaf) node.
-func (root *Tree) doInsert(item interface{}) *node {
+func (root *Tree) doInsert(item interface{}) *Node {
 	if root.root == nil {
-		n := &node{item: item, myTree: root}
+		n := &Node{item: item, myTree: root}
 		root.root = n
 		root.minNode = n
 		root.maxNode = n
@@ -447,7 +447,7 @@ func (root *Tree) doInsert(item interface{}) *node {
 			return nil
 		} else if comp < 0 {
 			if parent.left == nil {
-				n := &node{item: item, parent: parent, myTree: root}
+				n := &Node{item: item, parent: parent, myTree: root}
 				parent.left = n
 				root.count++
 				root.maybeSetMinNode(n)
@@ -457,7 +457,7 @@ func (root *Tree) doInsert(item interface{}) *node {
 			}
 		} else {
 			if parent.right == nil {
-				n := &node{item: item, parent: parent, myTree: root}
+				n := &Node{item: item, parent: parent, myTree: root}
 				parent.right = n
 				root.count++
 				root.maybeSetMaxNode(n)
@@ -473,7 +473,7 @@ func (root *Tree) doInsert(item interface{}) *node {
 // Find a node whose item >= key. The 2nd return value is true iff the
 // node.item==key. Returns (nil, false) if all nodes in the tree are <
 // key.
-func (root *Tree) findGE(key interface{}) (*node, bool) {
+func (root *Tree) findGE(key interface{}) (*Node, bool) {
 	n := root.root
 	for true {
 		if n == nil {
@@ -506,7 +506,7 @@ func (root *Tree) findGE(key interface{}) (*node, bool) {
 }
 
 // Delete N from the tree.
-func (root *Tree) doDelete(n *node) {
+func (root *Tree) doDelete(n *Node) {
 	if n.myTree != nil && n.myTree != root {
 		panic(fmt.Sprintf("delete applied to node that was not from our tree... n has tree: '%s'\n\n while root has tree: '%s'\n\n", n.myTree.DumpAsString(), root.DumpAsString()))
 	}
@@ -545,7 +545,7 @@ func (root *Tree) doDelete(n *node) {
 // Move n to the pred's place, and vice versa
 //
 // TODO: this code is overly convoluted
-func (root *Tree) swapNodes(n, pred *node) {
+func (root *Tree) swapNodes(n, pred *Node) {
 	doAssert(pred != n)
 	isLeft := pred.isLeftChild()
 	tmp := *pred
@@ -606,7 +606,7 @@ func (root *Tree) swapNodes(n, pred *node) {
 	n.color = tmp.color
 }
 
-func (root *Tree) deleteCase1(n *node) {
+func (root *Tree) deleteCase1(n *Node) {
 	for true {
 		if n.parent != nil {
 			if getColor(n.sibling()) == red {
@@ -642,7 +642,7 @@ func (root *Tree) deleteCase1(n *node) {
 	}
 }
 
-func (root *Tree) deleteCase5(n *node) {
+func (root *Tree) deleteCase5(n *Node) {
 	if n == n.parent.left &&
 		getColor(n.sibling()) == black &&
 		getColor(n.sibling().left) == red &&
@@ -673,7 +673,7 @@ func (root *Tree) deleteCase5(n *node) {
 	}
 }
 
-func (root *Tree) replaceNode(oldn, newn *node) {
+func (root *Tree) replaceNode(oldn, newn *Node) {
 	if oldn.parent == nil {
 		root.root = newn
 	} else {
@@ -693,7 +693,7 @@ func (root *Tree) replaceNode(oldn, newn *node) {
   A   Y	    => X   C
      B C 	  A B
 */
-func (root *Tree) rotateLeft(n *node) {
+func (root *Tree) rotateLeft(n *Node) {
 	r := n.right
 	root.replaceNode(n, r)
 	n.right = r.left
@@ -733,7 +733,7 @@ func (root *Tree) rotateLeft(n *node) {
    X   C  =>   A   Y
   A B             B C
 */
-func (root *Tree) rotateRight(n *node) {
+func (root *Tree) rotateRight(n *Node) {
 	L := n.left
 	root.replaceNode(n, L)
 	n.left = L.right
@@ -745,7 +745,7 @@ func (root *Tree) rotateRight(n *node) {
 }
 
 func init() {
-	negativeLimitNode = &node{}
+	negativeLimitNode = &Node{}
 }
 
 func (root *Tree) DumpAsString() string {
@@ -774,14 +774,14 @@ func (root *Tree) Dump() {
 	root.Walk(n, 0, "root")
 }
 
-func colorString(n *node) string {
+func colorString(n *Node) string {
 	if n.color == red {
 		return "red"
 	}
 	return "black"
 }
 
-func (tr *Tree) Walk(n *node, indent int, lab string) {
+func (tr *Tree) Walk(n *Node, indent int, lab string) {
 
 	spc := strings.Repeat(" ", indent*3)
 	var parItem, leftItem, rightItem interface{}
@@ -834,7 +834,7 @@ func validateTree2(tr *Tree) {
 	validations++
 }
 
-func (tr *Tree) validateTreeHelper(n *node) {
+func (tr *Tree) validateTreeHelper(n *Node) {
 
 	if n.parent != nil {
 		if n.parent.left != n && n.parent.right != n {

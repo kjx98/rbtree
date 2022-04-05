@@ -354,7 +354,7 @@ func TestRandomized(t *testing.T) {
 // Examples
 //
 
-func ExampleIntString() {
+func TestIntString(t *testing.T) {
 	type MyItem struct {
 		key   int
 		value string
@@ -364,8 +364,8 @@ func ExampleIntString() {
 	tree.Insert(MyItem{10, "value10"})
 	tree.Insert(MyItem{12, "value12"})
 
-	fmt.Println("Find(10) ->", tree.Find(MyItem{10, ""}))
-	fmt.Println("Find(11) ->", tree.Find(MyItem{11, ""}))
+	log.Println("Find(10) ->", tree.Find(MyItem{10, ""}))
+	log.Println("Find(11) ->", tree.Find(MyItem{11, ""}))
 
 	// Find an element >= 11
 	iter := tree.FindGE(MyItem{11, ""})
@@ -374,7 +374,7 @@ func ExampleIntString() {
 	// Find an element >= 13
 	iter = tree.FindGE(MyItem{13, ""})
 	if !iter.Limit() {
-		panic("There should be no element >= 13")
+		t.Fatal("There should be no element >= 13")
 	}
 
 	// Output:
