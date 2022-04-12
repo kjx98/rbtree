@@ -15,8 +15,8 @@ import (
 const testVerbose = false
 
 // Create a tree storing a set of integers
-func testNewIntSet() *Tree[int] {
-	return New(func(i1, i2 int) int {
+func testNewIntSet() *Tree[int, int] {
+	return New[int, int](func(i1, i2 int) int {
 		return i1 - i2
 	})
 }
@@ -40,8 +40,8 @@ func TestEmpty(t *testing.T) {
 
 func TestFindGE(t *testing.T) {
 	tree := testNewIntSet()
-	testAssert(t, tree.Insert(10), "Insert1")
-	testAssert(t, !tree.Insert(10), "Insert2")
+	testAssert(t, tree.Insert(10, 10), "Insert1")
+	testAssert(t, !tree.Insert(10, 10), "Insert2")
 	testAssert(t, tree.Len() == 1, "len==1")
 	testAssert(t, *tree.FindGE(10).Item() == 10, "FindGE 10")
 	testAssert(t, tree.FindGE(11).Limit(), "FindGE 11")
@@ -50,7 +50,7 @@ func TestFindGE(t *testing.T) {
 
 func TestFindLE(t *testing.T) {
 	tree := testNewIntSet()
-	testAssert(t, tree.Insert(10), "insert1")
+	testAssert(t, tree.Insert(10, 10), "insert1")
 	testAssert(t, *tree.FindLE(10).Item() == 10, "FindLE 10")
 	testAssert(t, *tree.FindLE(11).Item() == 10, "FindLE 11")
 	testAssert(t, tree.FindLE(9).NegativeLimit(), "FindLE 9")
@@ -58,7 +58,7 @@ func TestFindLE(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	tree := testNewIntSet()
-	testAssert(t, tree.Insert(10), "insert1")
+	testAssert(t, tree.Insert(10, 10), "insert1")
 	testAssert(t, *tree.Find(10) == 10, "Find 10")
 	testAssert(t, tree.Find(9) == nil, "Find 9")
 	testAssert(t, tree.Find(11) == nil, "Find 11")
@@ -68,19 +68,19 @@ func TestDelete(t *testing.T) {
 	tree := testNewIntSet()
 	testAssert(t, !tree.DeleteWithKey(10), "del")
 	testAssert(t, tree.Len() == 0, "dellen")
-	testAssert(t, tree.Insert(10), "ins")
+	testAssert(t, tree.Insert(10, 10), "ins")
 	testAssert(t, tree.DeleteWithKey(10), "del")
 	testAssert(t, tree.Len() == 0, "dellen")
 
 	// delete was deleting after the request if request not found
 	// ensure this does not regress:
-	testAssert(t, tree.Insert(10), "ins")
+	testAssert(t, tree.Insert(10, 10), "ins")
 	testAssert(t, !tree.DeleteWithKey(9), "del")
 	testAssert(t, tree.Len() == 1, "dellen")
 
 }
 
-func iterToString(i *Iterator[int]) string {
+func iterToString(i *Iterator[int, int]) string {
 	s := ""
 	for ; !i.Limit(); i = i.Next() {
 		if s != "" {
@@ -91,7 +91,7 @@ func iterToString(i *Iterator[int]) string {
 	return s
 }
 
-func reverseIterToString(i *Iterator[int]) string {
+func reverseIterToString(i *Iterator[int, int]) string {
 	s := ""
 	for ; !i.NegativeLimit(); i = i.Prev() {
 		if s != "" {
@@ -105,7 +105,7 @@ func reverseIterToString(i *Iterator[int]) string {
 func TestIterator(t *testing.T) {
 	tree := testNewIntSet()
 	for i := 0; i < 10; i = i + 2 {
-		tree.Insert(i)
+		tree.Insert(i, i)
 	}
 	if iterToString(tree.FindGE(3)) != "4,6,8" {
 		t.Error("iter")
@@ -254,7 +254,7 @@ func (oiter oracleIterator) Prev() oracleIterator {
 	return oracleIterator{oiter.o, oiter.index - 1}
 }
 
-func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int]) {
+func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int, int]) {
 	oi := oiter
 	ti := titer
 
@@ -304,7 +304,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int]) {
 	}
 }
 
-func compareContentsFull(t *testing.T, o *oracle, tree *Tree[int]) {
+func compareContentsFull(t *testing.T, o *oracle, tree *Tree[int, int]) {
 	compareContents(t, o.FindGE(t, int(-1)), tree.FindGE(-1))
 }
 
@@ -322,7 +322,7 @@ func TestRandomized(t *testing.T) {
 				log.Print("Insert ", key)
 			}
 			o.Insert(key)
-			tree.Insert(key)
+			tree.Insert(key, key)
 			compareContentsFull(t, o, tree)
 		} else if op < 90 && o.Len() > 0 {
 			key := o.RandomExistingKey(r)
@@ -360,19 +360,19 @@ func TestIntString(t *testing.T) {
 		value string
 	}
 
-	tree := New[MyItem](func(a, b MyItem) int { return a.key - b.key })
-	tree.Insert(MyItem{10, "value10"})
-	tree.Insert(MyItem{12, "value12"})
+	tree := New[string, int](func(a, b int) int { return a - b })
+	tree.Insert(10, "value10")
+	tree.Insert(12, "value12")
 
-	log.Println("Find(10) ->", tree.Find(MyItem{10, ""}))
-	log.Println("Find(11) ->", tree.Find(MyItem{11, ""}))
+	log.Println("Find(10) ->", tree.Find(10))
+	log.Println("Find(11) ->", tree.Find(11))
 
 	// Find an element >= 11
-	iter := tree.FindGE(MyItem{11, ""})
+	iter := tree.FindGE(11)
 	fmt.Println("FindGE(11) ->", iter.Item())
 
 	// Find an element >= 13
-	iter = tree.FindGE(MyItem{13, ""})
+	iter = tree.FindGE(13)
 	if !iter.Limit() {
 		t.Fatal("There should be no element >= 13")
 	}
@@ -385,26 +385,26 @@ func TestIntString(t *testing.T) {
 
 func BenchmarkRBInsert(b *testing.B) {
 	b.StopTimer()
-	tree := New[int](func(a, b int) int {
+	tree := New[int, int](func(a, b int) int {
 		return a - b
 	})
 	for i := 0; i < 1e6; i++ {
-		tree.Insert(i)
+		tree.Insert(i, i)
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		v := (rand.Int() % 1e6) + 2e6
-		tree.Insert(v)
+		tree.Insert(v, v)
 	}
 }
 
 func BenchmarkFind(b *testing.B) {
 	b.StopTimer()
-	tree := New(func(a, b int) int {
+	tree := New[int, int](func(a, b int) int {
 		return a - b
 	})
 	for i := 0; i < 1e6; i++ {
-		tree.Insert(i)
+		tree.Insert(i, i)
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

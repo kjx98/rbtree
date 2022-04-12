@@ -23,23 +23,24 @@ var verb bool
 // CompareFunc returns 0 if a==b, <0 if a<b, >0 if a>b.
 type CompareFunc[T any] func(a, b T) int
 
-type Node[T any] struct {
+type Node[T, Tk any] struct {
 	item                T
-	parent, left, right *Node[T]
+	key                 Tk
+	parent, left, right *Node[T, Tk]
 	color               int // black or red
 }
 
-type Tree[T any] struct {
+type Tree[T, Tk any] struct {
 	// Root of the tree
-	root              *Node[T]
-	negativeLimitNode *Node[T]
+	root              *Node[T, Tk]
+	negativeLimitNode *Node[T, Tk]
 
 	// The minimum and maximum nodes under the root.
-	minNode, maxNode *Node[T]
+	minNode, maxNode *Node[T, Tk]
 
 	// Number of nodes under root, including the root
 	count   int
-	compare CompareFunc[T]
+	compare CompareFunc[Tk]
 }
 
 // Iterator allows scanning tree elements in sort order.
@@ -48,24 +49,24 @@ type Tree[T any] struct {
 // is, if you delete the element that an iterator points to, the
 // iterator becomes invalid. For other operation types, the iterator
 // remains valid.
-type Iterator[T any] struct {
-	root *Tree[T]
-	node *Node[T]
+type Iterator[T, Tk any] struct {
+	root *Tree[T, Tk]
+	node *Node[T, Tk]
 }
 
 // Create a new empty tree.
-func New[T any](compare CompareFunc[T]) *Tree[T] {
-	return &Tree[T]{compare: compare, negativeLimitNode: &Node[T]{}}
+func New[T, Tk any](compare CompareFunc[Tk]) *Tree[T, Tk] {
+	return &Tree[T, Tk]{compare: compare, negativeLimitNode: &Node[T, Tk]{}}
 }
 
 // Return the number of elements in the tree.
-func (root *Tree[T]) Len() int {
+func (root *Tree[T, Tk]) Len() int {
 	return root.count
 }
 
 // A convenience function for finding an element equal to key. Return
 // nil if not found.
-func (root *Tree[T]) Find(key T) *T {
+func (root *Tree[T, Tk]) Find(key Tk) *T {
 	n, exact := root.findGE(key)
 	if exact {
 		return &n.item
@@ -75,62 +76,62 @@ func (root *Tree[T]) Find(key T) *T {
 
 // Create an iterator that points to the minimum item in the tree
 // If the tree is empty, return Limit()
-func (root *Tree[T]) Min() *Iterator[T] {
-	return &Iterator[T]{root, root.minNode}
+func (root *Tree[T, Tk]) Min() *Iterator[T, Tk] {
+	return &Iterator[T, Tk]{root, root.minNode}
 }
 
 // Create an iterator that points at the maximum item in the tree
 //
 // If the tree is empty, return NegativeLimit()
-func (root *Tree[T]) Max() *Iterator[T] {
+func (root *Tree[T, Tk]) Max() *Iterator[T, Tk] {
 	if root.maxNode == nil {
 		// TODO: there are a few checks of this form.
 		// Perhaps set maxNode=negativeLimit when the tree is empty
-		return &Iterator[T]{root, root.negativeLimitNode}
+		return &Iterator[T, Tk]{root, root.negativeLimitNode}
 	}
-	return &Iterator[T]{root, root.maxNode}
+	return &Iterator[T, Tk]{root, root.maxNode}
 }
 
 // Create an iterator that points beyond the maximum item in the tree
-func (root *Tree[T]) Limit() *Iterator[T] {
-	return &Iterator[T]{root, nil}
+func (root *Tree[T, Tk]) Limit() *Iterator[T, Tk] {
+	return &Iterator[T, Tk]{root, nil}
 }
 
 // Create an iterator that points before the minimum item in the tree
-func (root *Tree[T]) NegativeLimit() *Iterator[T] {
-	return &Iterator[T]{root, root.negativeLimitNode}
+func (root *Tree[T, Tk]) NegativeLimit() *Iterator[T, Tk] {
+	return &Iterator[T, Tk]{root, root.negativeLimitNode}
 }
 
 // Find the smallest element N such that N >= key, and return the
 // iterator pointing to the element. If no such element is found,
 // return root.Limit().
-func (root *Tree[T]) FindGE(key T) *Iterator[T] {
+func (root *Tree[T, Tk]) FindGE(key Tk) *Iterator[T, Tk] {
 	n, _ := root.findGE(key)
-	return &Iterator[T]{root, n}
+	return &Iterator[T, Tk]{root, n}
 }
 
 // Find the largest element N such that N <= key, and return the
 // iterator pointing to the element. If no such element is found,
 // return iter.NegativeLimit().
-func (root *Tree[T]) FindLE(key T) *Iterator[T] {
+func (root *Tree[T, Tk]) FindLE(key Tk) *Iterator[T, Tk] {
 	if root.maxNode == nil {
-		return &Iterator[T]{root, root.negativeLimitNode}
+		return &Iterator[T, Tk]{root, root.negativeLimitNode}
 	}
 	n, exact := root.findGE(key)
 	if exact {
-		return &Iterator[T]{root, n}
+		return &Iterator[T, Tk]{root, n}
 	}
 	if n != nil {
 		if nn := n.doPrev(); nn != nil {
-			return &Iterator[T]{root, nn}
+			return &Iterator[T, Tk]{root, nn}
 		} else {
-			return &Iterator[T]{root, root.negativeLimitNode}
+			return &Iterator[T, Tk]{root, root.negativeLimitNode}
 		}
 	}
-	return &Iterator[T]{root, root.maxNode}
+	return &Iterator[T, Tk]{root, root.maxNode}
 }
 
-func getGU[T any](n *Node[T]) (grandparent, uncle *Node[T]) {
+func getGU[T, Tk any](n *Node[T, Tk]) (grandparent, uncle *Node[T, Tk]) {
 	grandparent = n.parent.parent
 	if n.parent.isLeftChild() {
 		uncle = grandparent.right
@@ -142,16 +143,16 @@ func getGU[T any](n *Node[T]) (grandparent, uncle *Node[T]) {
 
 // Insert an item. If the item is already in the tree, do nothing and
 // return false. Else return true.
-func (root *Tree[T]) Insert(item T) bool {
+func (root *Tree[T, Tk]) Insert(key Tk, item T) bool {
 
 	// TODO: delay creating n until it is found to be inserted
-	n := root.doInsert(item)
+	n := root.doInsert(key, item)
 	if n == nil {
 		return false
 	}
 
 	n.color = red
-	var uncle, grandparent *Node[T]
+	var uncle, grandparent *Node[T, Tk]
 	for {
 
 		// Case 1: N is at the root
@@ -214,7 +215,7 @@ func (root *Tree[T]) Insert(item T) bool {
 
 // Delete an item with the given key. Return true iff the item was
 // found.
-func (root *Tree[T]) DeleteWithKey(key T) bool {
+func (root *Tree[T, Tk]) DeleteWithKey(key Tk) bool {
 	n, exact := root.findGE(key)
 	if exact {
 		root.doDelete(n)
@@ -226,7 +227,7 @@ func (root *Tree[T]) DeleteWithKey(key T) bool {
 // Delete the current item.
 //
 // REQUIRES: !iter.Limit() && !iter.NegativeLimit()
-func (root *Tree[T]) DeleteWithIterator(iter *Iterator[T]) {
+func (root *Tree[T, Tk]) DeleteWithIterator(iter *Iterator[T, Tk]) {
 	if iter.root != root {
 		panic("DeleteWithIterator called with iterator not from this tree.")
 	}
@@ -235,69 +236,69 @@ func (root *Tree[T]) DeleteWithIterator(iter *Iterator[T]) {
 }
 
 // allow clients to verify iterator is from the right tree.
-func (iter *Iterator[T]) Tree() *Tree[T] {
+func (iter *Iterator[T, Tk]) Tree() *Tree[T, Tk] {
 	return iter.root
 }
 
-func (iter *Iterator[T]) Equal(iter2 *Iterator[T]) bool {
+func (iter *Iterator[T, Tk]) Equal(iter2 *Iterator[T, Tk]) bool {
 	return iter.node == iter2.node
 }
 
 // Check if the iterator points beyond the max element in the tree
-func (iter *Iterator[T]) Limit() bool {
+func (iter *Iterator[T, Tk]) Limit() bool {
 	return iter.node == nil
 }
 
 // Check if the iterator points to the minimum element in the tree
-func (iter *Iterator[T]) Min() bool {
+func (iter *Iterator[T, Tk]) Min() bool {
 	return iter.node == iter.root.minNode
 }
 
 // Check if the iterator points to the maximum element in the tree
-func (iter *Iterator[T]) Max() bool {
+func (iter *Iterator[T, Tk]) Max() bool {
 	return iter.node == iter.root.maxNode
 }
 
 // Check if the iterator points before the minumum element in the tree
-func (iter *Iterator[T]) NegativeLimit() bool {
+func (iter *Iterator[T, Tk]) NegativeLimit() bool {
 	return iter.node == iter.root.negativeLimitNode
 }
 
 // Return the current element.
 //
 // REQUIRES: !iter.Limit() && !iter.NegativeLimit()
-func (iter *Iterator[T]) Item() *T {
+func (iter *Iterator[T, Tk]) Item() *T {
 	return &iter.node.item
 }
 
 // Create a new iterator that points to the successor of the current element.
 //
 // REQUIRES: !iter.Limit()
-func (iter *Iterator[T]) Next() *Iterator[T] {
+func (iter *Iterator[T, Tk]) Next() *Iterator[T, Tk] {
 	doAssert(!iter.Limit())
 	if iter.NegativeLimit() {
-		return &Iterator[T]{iter.root, iter.root.minNode}
+		return &Iterator[T, Tk]{iter.root, iter.root.minNode}
 	}
-	return &Iterator[T]{iter.root, iter.node.doNext()}
+	return &Iterator[T, Tk]{iter.root, iter.node.doNext()}
 }
 
 // Create a new iterator that points to the predecessor of the current
 // node.
 //
 // REQUIRES: !iter.NegativeLimit()
-func (iter *Iterator[T]) Prev() *Iterator[T] {
+func (iter *Iterator[T, Tk]) Prev() *Iterator[T, Tk] {
 	doAssert(!iter.NegativeLimit())
 	if !iter.Limit() {
 		if nn := iter.node.doPrev(); nn != nil {
-			return &Iterator[T]{iter.root, iter.node.doPrev()}
+			return &Iterator[T, Tk]{iter.root, iter.node.doPrev()}
 		} else {
-			return &Iterator[T]{iter.root, iter.root.negativeLimitNode}
+			return &Iterator[T, Tk]{iter.root, iter.root.negativeLimitNode}
 		}
 	}
 	if iter.root.maxNode == nil {
-		return &Iterator[T]{iter.root, iter.root.negativeLimitNode}
+		return &Iterator[T, Tk]{iter.root, iter.root.negativeLimitNode}
 	}
-	return &Iterator[T]{iter.root, iter.root.maxNode}
+	return &Iterator[T, Tk]{iter.root, iter.root.maxNode}
 }
 
 func doAssert(b bool) {
@@ -314,22 +315,22 @@ const (
 //
 // Internal node attribute accessors
 //
-func getColor[T any](n *Node[T]) int {
+func getColor[T, Tk any](n *Node[T, Tk]) int {
 	if n == nil {
 		return black
 	}
 	return n.color
 }
 
-func (n *Node[T]) isLeftChild() bool {
+func (n *Node[T, Tk]) isLeftChild() bool {
 	return n == n.parent.left
 }
 
-func (n *Node[T]) isRightChild() bool {
+func (n *Node[T, Tk]) isRightChild() bool {
 	return n == n.parent.right
 }
 
-func (n *Node[T]) sibling() *Node[T] {
+func (n *Node[T, Tk]) sibling() *Node[T, Tk] {
 	doAssert(n.parent != nil)
 	if n.isLeftChild() {
 		return n.parent.right
@@ -339,7 +340,7 @@ func (n *Node[T]) sibling() *Node[T] {
 
 // Return the minimum node that's larger than N. Return nil if no such
 // node is found.
-func (n *Node[T]) doNext() *Node[T] {
+func (n *Node[T, Tk]) doNext() *Node[T, Tk] {
 	if n.right != nil {
 		m := n.right
 		for m.left != nil {
@@ -363,7 +364,7 @@ func (n *Node[T]) doNext() *Node[T] {
 
 // Return the maximum node that's smaller than N. Return nil if no
 // such node is found.
-func (n *Node[T]) doPrev() *Node[T] {
+func (n *Node[T, Tk]) doPrev() *Node[T, Tk] {
 	if n.left != nil {
 		return maxPredecessor(n)
 	}
@@ -382,7 +383,7 @@ func (n *Node[T]) doPrev() *Node[T] {
 }
 
 // Return the predecessor of "n".
-func maxPredecessor[T any](n *Node[T]) *Node[T] {
+func maxPredecessor[T, Tk any](n *Node[T, Tk]) *Node[T, Tk] {
 	doAssert(n.left != nil)
 	m := n.left
 	for m.right != nil {
@@ -399,7 +400,7 @@ func maxPredecessor[T any](n *Node[T]) *Node[T] {
 // Private methods
 //
 
-func (root *Tree[T]) recomputeMinNode() {
+func (root *Tree[T, Tk]) recomputeMinNode() {
 	root.minNode = root.root
 	if root.minNode != nil {
 		for root.minNode.left != nil {
@@ -408,7 +409,7 @@ func (root *Tree[T]) recomputeMinNode() {
 	}
 }
 
-func (root *Tree[T]) recomputeMaxNode() {
+func (root *Tree[T, Tk]) recomputeMaxNode() {
 	root.maxNode = root.root
 	if root.maxNode != nil {
 		for root.maxNode.right != nil {
@@ -417,29 +418,29 @@ func (root *Tree[T]) recomputeMaxNode() {
 	}
 }
 
-func (root *Tree[T]) maybeSetMinNode(n *Node[T]) {
+func (root *Tree[T, Tk]) maybeSetMinNode(n *Node[T, Tk]) {
 	if root.minNode == nil {
 		root.minNode = n
 		root.maxNode = n
-	} else if root.compare(n.item, root.minNode.item) < 0 {
+	} else if root.compare(n.key, root.minNode.key) < 0 {
 		root.minNode = n
 	}
 }
 
-func (root *Tree[T]) maybeSetMaxNode(n *Node[T]) {
+func (root *Tree[T, Tk]) maybeSetMaxNode(n *Node[T, Tk]) {
 	if root.maxNode == nil {
 		root.minNode = n
 		root.maxNode = n
-	} else if root.compare(n.item, root.maxNode.item) > 0 {
+	} else if root.compare(n.key, root.maxNode.key) > 0 {
 		root.maxNode = n
 	}
 }
 
 // Try inserting "item" into the tree. Return nil if the item is
 // already in the tree. Otherwise return a new (leaf) node.
-func (root *Tree[T]) doInsert(item T) *Node[T] {
+func (root *Tree[T, Tk]) doInsert(key Tk, item T) *Node[T, Tk] {
 	if root.root == nil {
-		n := &Node[T]{item: item}
+		n := &Node[T, Tk]{key: key, item: item}
 		root.root = n
 		root.minNode = n
 		root.maxNode = n
@@ -448,12 +449,12 @@ func (root *Tree[T]) doInsert(item T) *Node[T] {
 	}
 	parent := root.root
 	for true {
-		comp := root.compare(item, parent.item)
+		comp := root.compare(key, parent.key)
 		if comp == 0 {
 			return nil
 		} else if comp < 0 {
 			if parent.left == nil {
-				n := &Node[T]{item: item, parent: parent}
+				n := &Node[T, Tk]{key: key, item: item, parent: parent}
 				parent.left = n
 				root.count++
 				root.maybeSetMinNode(n)
@@ -463,7 +464,7 @@ func (root *Tree[T]) doInsert(item T) *Node[T] {
 			}
 		} else {
 			if parent.right == nil {
-				n := &Node[T]{item: item, parent: parent}
+				n := &Node[T, Tk]{key: key, item: item, parent: parent}
 				parent.right = n
 				root.count++
 				root.maybeSetMaxNode(n)
@@ -479,13 +480,13 @@ func (root *Tree[T]) doInsert(item T) *Node[T] {
 // Find a node whose item >= key. The 2nd return value is true iff the
 // node.item==key. Returns (nil, false) if all nodes in the tree are <
 // key.
-func (root *Tree[T]) findGE(key T) (*Node[T], bool) {
+func (root *Tree[T, Tk]) findGE(key Tk) (*Node[T, Tk], bool) {
 	n := root.root
 	for true {
 		if n == nil {
 			return nil, false
 		}
-		comp := root.compare(key, n.item)
+		comp := root.compare(key, n.key)
 		if comp == 0 {
 			return n, true
 		} else if comp < 0 {
@@ -502,7 +503,7 @@ func (root *Tree[T]) findGE(key T) (*Node[T], bool) {
 				if succ == nil {
 					return nil, false
 				} else {
-					comp = root.compare(key, succ.item)
+					comp = root.compare(key, succ.key)
 					return succ, (comp == 0)
 				}
 			}
@@ -512,7 +513,7 @@ func (root *Tree[T]) findGE(key T) (*Node[T], bool) {
 }
 
 // Delete N from the tree.
-func (root *Tree[T]) doDelete(n *Node[T]) {
+func (root *Tree[T, Tk]) doDelete(n *Node[T, Tk]) {
 	if n.left != nil && n.right != nil {
 		pred := maxPredecessor(n)
 		root.swapNodes(n, pred)
@@ -548,7 +549,7 @@ func (root *Tree[T]) doDelete(n *Node[T]) {
 // Move n to the pred's place, and vice versa
 //
 // TODO: this code is overly convoluted
-func (root *Tree[T]) swapNodes(n, pred *Node[T]) {
+func (root *Tree[T, Tk]) swapNodes(n, pred *Node[T, Tk]) {
 	doAssert(pred != n)
 	isLeft := pred.isLeftChild()
 	tmp := *pred
@@ -571,6 +572,7 @@ func (root *Tree[T]) swapNodes(n, pred *Node[T]) {
 			pred.right = n
 		}
 		n.item = tmp.item
+		n.key = tmp.key
 		n.parent = pred
 
 		n.left = tmp.left
@@ -596,6 +598,7 @@ func (root *Tree[T]) swapNodes(n, pred *Node[T]) {
 			tmp.parent.right = n
 		}
 		n.item = tmp.item
+		n.key = tmp.key
 		n.parent = tmp.parent
 		n.left = tmp.left
 		if n.left != nil {
@@ -609,7 +612,7 @@ func (root *Tree[T]) swapNodes(n, pred *Node[T]) {
 	n.color = tmp.color
 }
 
-func (root *Tree[T]) deleteCase1(n *Node[T]) {
+func (root *Tree[T, Tk]) deleteCase1(n *Node[T, Tk]) {
 	for true {
 		if n.parent != nil {
 			if getColor(n.sibling()) == red {
@@ -645,7 +648,7 @@ func (root *Tree[T]) deleteCase1(n *Node[T]) {
 	}
 }
 
-func (root *Tree[T]) deleteCase5(n *Node[T]) {
+func (root *Tree[T, Tk]) deleteCase5(n *Node[T, Tk]) {
 	if n == n.parent.left &&
 		getColor(n.sibling()) == black &&
 		getColor(n.sibling().left) == red &&
@@ -676,7 +679,7 @@ func (root *Tree[T]) deleteCase5(n *Node[T]) {
 	}
 }
 
-func (root *Tree[T]) replaceNode(oldn, newn *Node[T]) {
+func (root *Tree[T, Tk]) replaceNode(oldn, newn *Node[T, Tk]) {
 	if oldn.parent == nil {
 		root.root = newn
 	} else {
@@ -696,7 +699,7 @@ func (root *Tree[T]) replaceNode(oldn, newn *Node[T]) {
   A   Y	    => X   C
      B C 	  A B
 */
-func (root *Tree[T]) rotateLeft(n *Node[T]) {
+func (root *Tree[T, Tk]) rotateLeft(n *Node[T, Tk]) {
 	r := n.right
 	root.replaceNode(n, r)
 	n.right = r.left
@@ -736,7 +739,7 @@ func (root *Tree[T]) rotateLeft(n *Node[T]) {
    X   C  =>   A   Y
   A B             B C
 */
-func (root *Tree[T]) rotateRight(n *Node[T]) {
+func (root *Tree[T, Tk]) rotateRight(n *Node[T, Tk]) {
 	L := n.left
 	root.replaceNode(n, L)
 	n.left = L.right
@@ -747,7 +750,7 @@ func (root *Tree[T]) rotateRight(n *Node[T]) {
 	n.parent = L
 }
 
-func (root *Tree[T]) DumpAsString() string {
+func (root *Tree[T, Tk]) DumpAsString() string {
 	s := ""
 	i := 0
 	verb = true
@@ -758,7 +761,7 @@ func (root *Tree[T]) DumpAsString() string {
 	return s
 }
 
-func (root *Tree[T]) Dump() {
+func (root *Tree[T, Tk]) Dump() {
 	i := 0
 	verb = true
 	for it := root.Min(); !it.Limit(); it = it.Next() {
@@ -773,14 +776,14 @@ func (root *Tree[T]) Dump() {
 	root.Walk(n, 0, "root")
 }
 
-func colorString[T any](n *Node[T]) string {
+func colorString[T, Tk any](n *Node[T, Tk]) string {
 	if n.color == red {
 		return "red"
 	}
 	return "black"
 }
 
-func (tr *Tree[T]) Walk(n *Node[T], indent int, lab string) {
+func (tr *Tree[T, Tk]) Walk(n *Node[T, Tk], indent int, lab string) {
 
 	spc := strings.Repeat(" ", indent*3)
 	var parItem, leftItem, rightItem T
@@ -816,7 +819,7 @@ func (tr *Tree[T]) Walk(n *Node[T], indent int, lab string) {
 
 var validations int
 
-func validateTree2[T any](tr *Tree[T]) {
+func validateTree2[T, Tk any](tr *Tree[T, Tk]) {
 	if tr == nil {
 		panic("can't validate a nil tree")
 	}
@@ -833,7 +836,7 @@ func validateTree2[T any](tr *Tree[T]) {
 	validations++
 }
 
-func (tr *Tree[T]) validateTreeHelper(n *Node[T]) {
+func (tr *Tree[T, Tk]) validateTreeHelper(n *Node[T, Tk]) {
 
 	if n.parent != nil {
 		if n.parent.left != n && n.parent.right != n {
