@@ -15,9 +15,9 @@ import (
 const testVerbose = false
 
 // Create a tree storing a set of integers
-func testNewIntSet() *Tree {
-	return New(func(i1, i2 interface{}) int {
-		return int(i1.(int)) - int(i2.(int))
+func testNewIntSet() *Tree[int] {
+	return New(func(i1, i2 int) int {
+		return i1 - i2
 	})
 }
 
@@ -43,23 +43,23 @@ func TestFindGE(t *testing.T) {
 	testAssert(t, tree.Insert(10), "Insert1")
 	testAssert(t, !tree.Insert(10), "Insert2")
 	testAssert(t, tree.Len() == 1, "len==1")
-	testAssert(t, tree.FindGE(10).Item().(int) == 10, "FindGE 10")
+	testAssert(t, *tree.FindGE(10).Item() == 10, "FindGE 10")
 	testAssert(t, tree.FindGE(11).Limit(), "FindGE 11")
-	testAssert(t, tree.FindGE(9).Item().(int) == 10, "FindGE 10")
+	testAssert(t, *tree.FindGE(9).Item() == 10, "FindGE 10")
 }
 
 func TestFindLE(t *testing.T) {
 	tree := testNewIntSet()
 	testAssert(t, tree.Insert(10), "insert1")
-	testAssert(t, tree.FindLE(10).Item().(int) == 10, "FindLE 10")
-	testAssert(t, tree.FindLE(11).Item().(int) == 10, "FindLE 11")
+	testAssert(t, *tree.FindLE(10).Item() == 10, "FindLE 10")
+	testAssert(t, *tree.FindLE(11).Item() == 10, "FindLE 11")
 	testAssert(t, tree.FindLE(9).NegativeLimit(), "FindLE 9")
 }
 
 func TestFind(t *testing.T) {
 	tree := testNewIntSet()
 	testAssert(t, tree.Insert(10), "insert1")
-	testAssert(t, tree.Find(10).(int) == 10, "Find 10")
+	testAssert(t, *tree.Find(10) == 10, "Find 10")
 	testAssert(t, tree.Find(9) == nil, "Find 9")
 	testAssert(t, tree.Find(11) == nil, "Find 11")
 }
@@ -80,24 +80,24 @@ func TestDelete(t *testing.T) {
 
 }
 
-func iterToString(i *Iterator) string {
+func iterToString(i *Iterator[int]) string {
 	s := ""
 	for ; !i.Limit(); i = i.Next() {
 		if s != "" {
 			s = s + ","
 		}
-		s = s + fmt.Sprintf("%d", i.Item().(int))
+		s = s + fmt.Sprintf("%d", *i.Item())
 	}
 	return s
 }
 
-func reverseIterToString(i *Iterator) string {
+func reverseIterToString(i *Iterator[int]) string {
 	s := ""
 	for ; !i.NegativeLimit(); i = i.Prev() {
 		if s != "" {
 			s = s + ","
 		}
-		s = s + fmt.Sprintf("%d", i.Item().(int))
+		s = s + fmt.Sprintf("%d", *i.Item())
 	}
 	return s
 }
@@ -254,7 +254,7 @@ func (oiter oracleIterator) Prev() oracleIterator {
 	return oracleIterator{oiter.o, oiter.index - 1}
 }
 
-func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator) {
+func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int]) {
 	oi := oiter
 	ti := titer
 
@@ -267,7 +267,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator) {
 
 	for !oi.Limit() && !ti.Limit() {
 		// log.Print("Item: ", oi.Item(), ti.Item())
-		if ti.Item().(int) != oi.Item() {
+		if *ti.Item() != oi.Item() {
 			t.Fatal("Wrong item", ti.Item(), oi.Item())
 		}
 		oi = oi.Next()
@@ -290,7 +290,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator) {
 	}
 
 	for !oi.NegativeLimit() && !ti.NegativeLimit() {
-		if ti.Item().(int) != oi.Item() {
+		if *ti.Item() != oi.Item() {
 			t.Fatal("Wrong item", ti.Item(), oi.Item())
 		}
 		oi = oi.Prev()
@@ -304,7 +304,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator) {
 	}
 }
 
-func compareContentsFull(t *testing.T, o *oracle, tree *Tree) {
+func compareContentsFull(t *testing.T, o *oracle, tree *Tree[int]) {
 	compareContents(t, o.FindGE(t, int(-1)), tree.FindGE(-1))
 }
 
@@ -360,7 +360,7 @@ func TestIntString(t *testing.T) {
 		value string
 	}
 
-	tree := New(func(a, b interface{}) int { return a.(MyItem).key - b.(MyItem).key })
+	tree := New[MyItem](func(a, b MyItem) int { return a.key - b.key })
 	tree.Insert(MyItem{10, "value10"})
 	tree.Insert(MyItem{12, "value12"})
 
@@ -385,8 +385,8 @@ func TestIntString(t *testing.T) {
 
 func BenchmarkRBInsert(b *testing.B) {
 	b.StopTimer()
-	tree := New(func(a, b interface{}) int {
-		return a.(int) - b.(int)
+	tree := New[int](func(a, b int) int {
+		return a - b
 	})
 	for i := 0; i < 1e6; i++ {
 		tree.Insert(i)
@@ -400,8 +400,8 @@ func BenchmarkRBInsert(b *testing.B) {
 
 func BenchmarkFind(b *testing.B) {
 	b.StopTimer()
-	tree := New(func(a, b interface{}) int {
-		return a.(int) - b.(int)
+	tree := New(func(a, b int) int {
+		return a - b
 	})
 	for i := 0; i < 1e6; i++ {
 		tree.Insert(i)
