@@ -43,16 +43,16 @@ func TestFindGE(t *testing.T) {
 	testAssert(t, tree.Insert(10, 10), "Insert1")
 	testAssert(t, !tree.Insert(10, 10), "Insert2")
 	testAssert(t, tree.Len() == 1, "len==1")
-	testAssert(t, *tree.FindGE(10).Item() == 10, "FindGE 10")
+	testAssert(t, tree.FindGE(10).Item() == 10, "FindGE 10")
 	testAssert(t, tree.FindGE(11).Limit(), "FindGE 11")
-	testAssert(t, *tree.FindGE(9).Item() == 10, "FindGE 10")
+	testAssert(t, tree.FindGE(9).Item() == 10, "FindGE 10")
 }
 
 func TestFindLE(t *testing.T) {
 	tree := testNewIntSet()
 	testAssert(t, tree.Insert(10, 10), "insert1")
-	testAssert(t, *tree.FindLE(10).Item() == 10, "FindLE 10")
-	testAssert(t, *tree.FindLE(11).Item() == 10, "FindLE 11")
+	testAssert(t, tree.FindLE(10).Item() == 10, "FindLE 10")
+	testAssert(t, tree.FindLE(11).Item() == 10, "FindLE 11")
 	testAssert(t, tree.FindLE(9).NegativeLimit(), "FindLE 9")
 }
 
@@ -86,7 +86,7 @@ func iterToString(i *Iterator[int, int]) string {
 		if s != "" {
 			s = s + ","
 		}
-		s = s + fmt.Sprintf("%d", *i.Item())
+		s = s + fmt.Sprintf("%d", i.Item())
 	}
 	return s
 }
@@ -97,7 +97,7 @@ func reverseIterToString(i *Iterator[int, int]) string {
 		if s != "" {
 			s = s + ","
 		}
-		s = s + fmt.Sprintf("%d", *i.Item())
+		s = s + fmt.Sprintf("%d", i.Item())
 	}
 	return s
 }
@@ -267,7 +267,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int, in
 
 	for !oi.Limit() && !ti.Limit() {
 		// log.Print("Item: ", oi.Item(), ti.Item())
-		if *ti.Item() != oi.Item() {
+		if ti.Item() != oi.Item() {
 			t.Fatal("Wrong item", ti.Item(), oi.Item())
 		}
 		oi = oi.Next()
@@ -290,7 +290,7 @@ func compareContents(t *testing.T, oiter oracleIterator, titer *Iterator[int, in
 	}
 
 	for !oi.NegativeLimit() && !ti.NegativeLimit() {
-		if *ti.Item() != oi.Item() {
+		if ti.Item() != oi.Item() {
 			t.Fatal("Wrong item", ti.Item(), oi.Item())
 		}
 		oi = oi.Prev()

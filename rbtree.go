@@ -267,8 +267,8 @@ func (iter *Iterator[T, Tk]) NegativeLimit() bool {
 // Return the current element.
 //
 // REQUIRES: !iter.Limit() && !iter.NegativeLimit()
-func (iter *Iterator[T, Tk]) Item() *T {
-	return &iter.node.item
+func (iter *Iterator[T, Tk]) Item() T {
+	return iter.node.item
 }
 
 // Create a new iterator that points to the successor of the current element.
